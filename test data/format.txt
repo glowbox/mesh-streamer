@@ -1,0 +1,129 @@
+Mesh Binary Format:
+
+All values are little endian unless otherwise stated.
+
+Structure:
+
+[marker]
+
+[header]
+
+[vertex data]
+[color data]
+[triangle data]
+
+
+
+=== Marker ===
+
+(8 bytes)
+
+ASCII text: MESHDATA
+Hex values: 4D 45 53 48 44 41 54 41
+
+
+
+=== Header ===
+
+(8 bytes)
+
+Type    Bytes    Description
+
+UInt16  2        Number of vertex positions
+UInt16  2        Number of color values (r g b tripplets)
+UInt16  2        Number of triangles
+UInt16  2		 Unused...
+
+
+=== Data ===
+
+Use the quantities listed in the header to determine the amount of each type of data to expect.
+
+
+Vertex position data:
+
+Type:  32 bit float
+Count: Vertex count x 3
+
+
+Color data:
+
+Type:     Unsigned bytes
+Count:    Color count x 3 
+Comments: Colors are stored in 8 bits per channel, R G B, R G B, R G B ... 
+
+
+Triangle data:
+
+type:     Unsigned 16 bit integers
+Count:    Number of triangles x 3 (three vertex indices per triangle)
+Comments: These numbers index into the vertex array.
+
+
+
+
+Example: test.mesh yeilds the following values:
+
+
+Verts:  24
+Colors: 24
+Faces:  8
+
+Vert:  [ -2, 2, -0.1972939819097519 ]
+Vert:  [ -2, 0, -0.8093213438987732 ]
+Vert:  [ 0, 2, -0.1972939819097519 ]
+Vert:  [ -2, 0, -0.8093213438987732 ]
+Vert:  [ 0, 0, -0.8093213438987732 ]
+Vert:  [ 0, 2, -0.1972939819097519 ]
+Vert:  [ 0, 2, -0.1972939819097519 ]
+Vert:  [ 0, 0, -0.8093213438987732 ]
+Vert:  [ 2, 2, -0.1972939819097519 ]
+Vert:  [ 0, 0, -0.8093213438987732 ]
+Vert:  [ 2, 0, -0.8093213438987732 ]
+Vert:  [ 2, 2, -0.1972939819097519 ]
+Vert:  [ -2, 0, -0.8093213438987732 ]
+Vert:  [ -2, -2, 0.870887041091919 ]
+Vert:  [ 0, 0, -0.8093213438987732 ]
+Vert:  [ -2, -2, 0.870887041091919 ]
+Vert:  [ 0, -2, 0.870887041091919 ]
+Vert:  [ 0, 0, -0.8093213438987732 ]
+Vert:  [ 0, 0, -0.8093213438987732 ]
+Vert:  [ 0, -2, 0.870887041091919 ]
+Vert:  [ 2, 0, -0.8093213438987732 ]
+Vert:  [ 0, -2, 0.870887041091919 ]
+Vert:  [ 2, -2, 0.870887041091919 ]
+Vert:  [ 2, 0, -0.8093213438987732 ]
+
+Color:  221 4 127
+Color:  221 4 127
+Color:  221 4 127
+Color:  221 147 127
+Color:  221 147 127
+Color:  221 147 127
+Color:  166 4 127
+Color:  166 4 127
+Color:  166 4 127
+Color:  166 147 127
+Color:  166 147 127
+Color:  166 147 127
+Color:  221 147 127
+Color:  221 147 127
+Color:  221 147 127
+Color:  221 233 127
+Color:  221 233 127
+Color:  221 233 127
+Color:  166 147 127
+Color:  166 147 127
+Color:  166 147 127
+Color:  166 233 127
+Color:  166 233 127
+Color:  166 233 127
+
+Face:  [ 0, 1, 2 ]
+Face:  [ 3, 4, 5 ]
+Face:  [ 6, 7, 8 ]
+Face:  [ 9, 10, 11 ]
+Face:  [ 12, 13, 14 ]
+Face:  [ 15, 16, 17 ]
+Face:  [ 18, 19, 20 ]
+Face:  [ 21, 22, 23 ]
