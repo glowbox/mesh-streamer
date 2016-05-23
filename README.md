@@ -2,7 +2,7 @@
 A general purpose system for streaming mesh data into Unity
 
 
-** To Run: **
+### Setup and Usage
 
 In the server folder:
 
