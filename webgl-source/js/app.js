@@ -2,7 +2,7 @@ var meshGeom;
 
 var streamer = new GeometryStreamer("Joe Shmoe", "The Torus of Troooth");
 
-var gridResolution = 2;
+var gridResolution = 15;
 var useBufferGeom = false;
 
 
@@ -146,7 +146,7 @@ function render() {
 	core.renderer.render(core.scene, core.camera);
 	
 		
-//	window.requestAnimationFrame(render);
+	window.requestAnimationFrame(render);
 }
 
 function initialize() {
@@ -157,8 +157,6 @@ function initialize() {
 	
 
 	resizeViewport(window.innerWidth, window.innerHeight);
-
-
 
 	window.addEventListener('resize', function() {
 		resizeViewport(window.innerWidth, window.innerHeight);

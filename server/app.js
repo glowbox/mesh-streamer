@@ -13,7 +13,7 @@ var meshClients = [];
 var bytesRecieved = 0;
 
 var port      = 8080;
-var saveFrame = true;
+var saveFirstFrame = false;
 
 var io = require('socket.io')(server);
 io.set("transports", ["websocket"]);
@@ -47,10 +47,10 @@ io.sockets.on('connection', function (socket) {
       bytesRecieved += buffer.length;
       
       //debugMeshBuffer(buffer, newSource.author);
-      if(saveFrame) {
+      if(saveFirstFrame) {
         debugMeshBuffer(buffer, newSource.author, true);
         writeMeshToFile("foo.mesh", buffer, false );
-        saveFrame = false;
+        saveFirstFrame = false;
       }
       
       // TODO: Allow clients to pick a specific "channel" and only send updated mesh data 
