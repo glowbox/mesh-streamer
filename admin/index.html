@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link rel="stylesheet" href="css/style.css" type="text/css"/>
+</head>
+<body>
+	
+	<div id="disconnected" class="hidden"><label>DISCONNECTED</label></div>
+
+	<table border="1" cellspacing="0" id="slot-list">
+		<thead><th width="40">Slot</th><th>Author</th><th>Title</th><th>Platform</th><th>Key</th><th>Actions</th></thead>
+		<tbody id="slots"></tbody>
+	</table>
+	
+	<br>
+	<!-- hard coded number of canvases for now.. this should be dynamic -->
+	<canvas id="thumbnail-0" width="320" height="200"></canvas>
+	<canvas id="thumbnail-1" width="320" height="200"></canvas>
+	<canvas id="thumbnail-2" width="320" height="200"></canvas>
+
+
+	<script src="http://purdybot.local:8080/socket.io/socket.io.js"></script>
+
+	<script src="js/three.min.js"></script>
+	<script src="js/OrbitControls.js"></script>
+	
+	<script src="js/GeometryReader.js"></script>
+	<script src="js/MeshReaderHTTP.js"></script>
+	<script src="js/admin.js"></script>
+
+</body>
+</html>

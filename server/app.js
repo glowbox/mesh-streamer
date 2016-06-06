@@ -1,22 +1,239 @@
 var express   = require('express');
 var app       = express();
 var server    = require("http").createServer(app);
+var bodyParser = require('body-parser');
+var rawBody = require("raw-body");
 
 var zlib = require('zlib');
 var fs = require('fs');
 
 var WebsocketMeshSource = require("./WebsocketMeshSource");
 
-var meshSources = [];
-var meshClients = [];
+// slots will be released if a client doesn't send an update within this interval.
+var SOURCE_TIMEOUT_THRESHOLD = 2000; //milliseconds, 
+
+var slots = [
+  {
+    free: true,
+    info: {},
+    origin: [1,0,0],
+    key: 0,
+    lastContact: 0
+  },
+  {
+    free: true,
+    info: {},
+    origin: [0,1,0],
+    key: 0,
+    lastContact: 0
+  },
+  {
+    free: true,
+    info: {},
+    origin: [2,0,0],
+    key: 0,
+    lastContact: 0
+  }
+];
+
+// store the last known frame of geometry data for each slot.
+var slotFrames = [null, null, null];
+
 
 var bytesRecieved = 0;
 
-var port      = 8080;
+var port           = 8080;
 var saveFirstFrame = false;
+
+
+function slotsChanged() {
+  io.to("admin").emit("slots", slots);
+}
+
+function purgeInactiveSlots() {
+
+  var now = new Date().getTime();
+
+  slots.forEach((item, index) => {
+    if(!item.free) {
+      if( now - item.lastContact > SOURCE_TIMEOUT_THRESHOLD ) {
+        console.log("Source timed out, slot: " + index);
+
+        releaseSlot(index);
+      }
+    }
+  });
+}
+
+setInterval(purgeInactiveSlots, 500);
+
+
+function claimSlot(index, info) {
+  if(slots[index].free) {
+    slots[index].free = false;
+    slots[index].info = info;
+    slots[index].key = Math.floor(Math.random() * 65535);
+    slots[index].lastContact = new Date().getTime();
+
+    slotsChanged();
+
+    return slots[index].key;
+  }
+  return null;
+}
+
+
+function releaseSlot(index) {
+  if(!slots[index].free) {
+    slots[index].info = {};
+    slots[index].lastFrame = null;
+    slots[index].free = true;
+    slots[index].key = 0;
+
+    slotsChanged();
+  }
+}
+
+function getFreeSlots() {
+  var freeSlots = [];
+  slots.forEach( (item, index) => {
+    if(item.free) {
+      freeSlots.push(index);
+    }
+  });
+
+  console.log("Free slots: ", freeSlots);
+
+  return freeSlots;
+}
+
+function getRandomFreeSlot() {
+  var freeSlots = getFreeSlots();
+  if(freeSlots.length > 0) {
+    var index = Math.floor(Math.random() * freeSlots.length);
+    return freeSlots[index];
+  } else {
+    return -1;
+  }
+}
+
+app.use(express.static('../'));
+app.use(bodyParser.raw({"type" : "*/*"}));
+
+app.get("/mesh", (req, res) => {
+  var slotInfo = [];
+  
+  slots.forEach((item) => {
+    slotInfo.push({
+      "free" : item.free,
+      "info" : item.info,
+      "origin" : item.origin
+    });
+  });
+
+  res.send(JSON.stringify(slotInfo));
+});
+
+
+app.get("/mesh/:index", (req, res) => {
+  
+  var slotIndex = parseInt(req.params.index);
+
+  if(isNaN(slotIndex) || (slotIndex < 0) || (slotIndex > slots.length - 1)) {
+    res.status(404);
+    res.end("Invalid slot index.");
+  }
+
+  res.status(200);
+
+  res.end(slotFrames[slotIndex]);
+});
+
+
+app.post("/mesh/register", (req, res) => {
+  var slotIndex = getRandomFreeSlot();
+  if(slotIndex !== -1) {
+    console.log("Body: " + req.body);
+    var info = JSON.parse(req.body.toString());
+    var key = claimSlot(slotIndex, info);
+    if(key) {
+      res.status(200);
+      res.json({
+        "result":true, 
+        "key": key, 
+        "index" : slotIndex
+      });
+    } else {
+      res.status(500);
+      res.json({
+        "result":false, 
+        "error": "unable to claim slot"
+      });
+    }
+  } else {
+    res.status(404);
+    res.json({
+      "result":false, 
+      "error": "no free slots."
+    });
+  }
+});
+
+
+app.post("/mesh/:index/frame", (req, res) => {
+  var slotIndex = parseInt(req.params.index);
+
+  if(isNaN(slotIndex) || (slotIndex < 0) || (slotIndex > slots.length - 1)) {
+    res.status(404);
+    res.end("Invalid slot index.");
+  }
+  
+  if(parseInt(req.get("slot-key")) == slots[slotIndex].key) {
+
+    //console.log("Got a frame!");
+    slots[slotIndex].lastContact = new Date().getTime();
+
+    rawBody( req, (err, rawRes) => {
+      //console.log("Raw body: ", rawRes.length);
+      slotFrames[slotIndex] = Buffer.from(rawRes);
+      bytesRecieved += rawRes.length;
+      res.end("Thanks.");
+    });
+
+  } else {
+    res.status(404);
+    res.end("Incorrect slot key.");
+  }
+});
+
+
+app.post("/mesh/:index/stop", (req, res) => {
+  
+  var slotIndex = req.params.index;
+  
+  console.log("Getting frame for slot index: " + slotIndex);
+  console.log("Slot key: " + req.get("slot-key"));
+
+  if(parseInt(req.get("slot-key")) == slots[slotIndex].key) {
+    console.log("Source is unregistering from slot: " + slotIndex);
+    releaseSlot(slotIndex);
+    res.end();
+  } else {
+    console.log("Got a frame but the key was wrong.");
+    res.status(404);
+    res.end("Nope.");
+  }
+});
+
+
 
 var io = require('socket.io')(server);
 io.set("transports", ["websocket"]);
+
+
+
+var meshSources = [];
+var meshClients = [];
 
 
 // Print the data tranfer rate every second..
@@ -30,69 +247,79 @@ setInterval(function() {
 io.sockets.on('connection', function (socket) {
   
   console.log("Websocket connected.");
+  var slotId = -1;
+  var slotKey = -1;
 
-  // Mesh sources
 
-  socket.on("identify-source", (object) => {
+// Mesh sources
 
-    console.log("Websocket source identifying");
-    console.log(object);
 
-    var newSource = new WebsocketMeshSource(socket, object);
+  socket.on("register", function(info) {
+    var slotIndex = getRandomFreeSlot();
+    if(slotIndex !== -1) {
+      var key = claimSlot(slotIndex, info);
+      if(key) {
+        
+        slotId = slotIndex;
+        slotKey = key;
 
-    // Incoming mesh data
-    newSource.on("mesh", function(buffer) {
-      
-      // keep some stats..
-      bytesRecieved += buffer.length;
-      
-      //debugMeshBuffer(buffer, newSource.author);
-      if(saveFirstFrame) {
-        debugMeshBuffer(buffer, newSource.author, true);
-        writeMeshToFile("foo.mesh", buffer, false );
-        saveFirstFrame = false;
+        socket.emit("register",{
+            "result": true, 
+            "key": key, 
+            "index" : slotIndex
+        });
+      } else {
+        socket.disconnect();
       }
-      
-      // TODO: Allow clients to pick a specific "channel" and only send updated mesh data 
-      // to clients which are tuned into each given channel. Curerntly all clients get all
-      // mesh streams, not scalable..
+    } else {
+       socket.disconnect();
+    }
+  });
 
-      meshClients.forEach(function(client) {
-        if(client.ready) {
-          client.ready = false;
-          client.connection.emit("mesh", buffer);
-        } else {
-          console.log("Client not ready, skipping frame..");
+  socket.on("frame", (frameData) => {
+    if((slotId !== -1) && (slots[slotId].key == slotKey)) {
+      bytesRecieved += frameData.length;
+
+      slots[slotId].lastContact = new Date().getTime();
+      slotFrames[slotId] = frameData;
+
+      meshClients.forEach( (client) => {
+        if(client.ready && (client.slot == slotId)) {
+          client.connection.emit("mesh", frameData);
         }
       });
-    });
-    
 
-    newSource.on("disconnect", function(source) {
-      for(var i = 0; i < meshSources.length; i++){
-        if(meshSources[i].source === source) {
-          meshSources.splice(i, 1);
-        }
-      }
-      console.log("Mesh source disconnected, sources: " + meshSources.length);
-    });
+      socket.emit("ready");
+    } else {
+      console.log("Socket is no longer registered to a slot for some reason, disconnecting.");
+      socket.disconnect();
+    }
+  });
 
-    
-    meshSources.push(newSource);
+  socket.on("stop", () => {
+    if(slotId !== -1) {
+      releaseSlot(slotId);
+      socket.disconnect();
+    }
+  });
 
-    console.log("Mesh source connected, sources: " + meshSources.length);
+  socket.on("disconnect", () => {
+    if(slotId !== -1) {
+      releaseSlot(slotId);
+    }
   });
 
 
+// Websocket mesh clients (browser debug viewer)
 
-  // Mesh clients (holo lenses)
 
-  socket.on("identify-client", function(object) {
+  socket.on("register-client", function(config) {
     
     console.log("Websocket client identifying");
-    console.log(object);
+    console.log(config);
 
     var newClient = {
+      "slot"        : config.slot,
       "connection"  : socket,
       "ready"       : true
     };
@@ -111,11 +338,30 @@ io.sockets.on('connection', function (socket) {
       newClient.ready = true;
     });
 
+    socket.on("set-slot", function(obj){
+      newClient.slot = obj.slot;
+    });
+
     meshClients.push(newClient);
 
     console.log("Mesh client connected, clients: " + meshClients.length);
 
     socket.emit("sources", getSources() );
+  });
+
+
+// websocket admins.
+
+  socket.on("register-admin", function(object) {
+      
+    console.log("Websocket admin identifying");
+      
+    socket.join("admin");
+
+    socket.emit("slots", slots);
+    socket.on("eject", function(obj){
+      releaseSlot(obj.slot);
+    });
   });
 });
 
@@ -134,6 +380,8 @@ function getSources() {
 
   return result;
 }
+
+
 
 
 function writeMeshToFile(fileName, buffer, compressFile) {
@@ -156,6 +404,7 @@ function writeMeshToFile(fileName, buffer, compressFile) {
     wstream.end();
   }
 }
+
 
 
 
@@ -221,8 +470,6 @@ function debugMeshBuffer(obj, author, verbose) {
 };
 
 
-
-app.use(express.static('../'));
 
 server.listen(port);
 

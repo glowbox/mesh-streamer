@@ -1,14 +1,24 @@
 <!DOCTYPE html>
+
 <html>
 <head>
 	<link rel="stylesheet" href="css/style.css" type="text/css"/>
 </head>
 <body>
-	<script src="http://purdybot.local:8080/socket.io/socket.io.js"></script>
 	
+	<div id="status">
+	</div>
+
 	<script src="js/three.min.js"></script>
 	<script src="js/OrbitControls.js"></script>
-	<script src="js/GeometryReader.js"></script>
+	<script src="js/GeometryProcessor.js"></script>
+	<script src="js/MeshSenderHTTP.js"></script>
+	
+	<script>
+		var streamer = new MeshSenderHTTP("Joe Shmoe", "Mesh via HTTP");
+	</script>
+
 	<script src="js/app.js"></script>
 </body>
+
 </html>

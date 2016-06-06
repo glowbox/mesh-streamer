@@ -1,45 +1,22 @@
 var GeometryReader = function() {
 
-	this.socket = io({transports : ["websocket"]});
-	this.socket.binaryType = 'arraybuffer';
-
 	this.vertices 	= [];
 	this.colors 	= [];
 	this.faces 		= [];
 
 	this.bufferGeometry = new THREE.BufferGeometry();
+	
 	var emptyData = new Float32Array();
 
 	this.bufferGeometry.addAttribute("position", new THREE.BufferAttribute(emptyData, 3));
 	this.bufferGeometry.addAttribute("color", new THREE.BufferAttribute(emptyData, 3));
-	this.bufferGeometry.addAttribute("uv", new THREE.BufferAttribute(emptyData, 3));
-
-	this.connected = false;
-	this.dataCount = 0;
-	this.renderCount = 0;
-	var self = this;
-
-	this.socket.on("connect", function() {
-		
-		self.connected = true;
-		self.socket.emit("identify-client", {
-			"platform"  : "THREEJS"
-		});
-
-		self.socket.on("mesh", function(buffer) {
-			self.updateMesh(buffer);
-			self.dataCount++;
-		});
-	});
-}
-
-GeometryReader.prototype.frameFinished = function() {
-	this.socket.emit("mesh-ready");
-	console.log("Frames recieved:" + this.dataCount + ", frames rendered:" + this.renderCount);
+	//this.bufferGeometry.addAttribute("uv", new THREE.BufferAttribute(emptyData, 3));
 }
 
 
 GeometryReader.prototype.updateMesh = function(buffer) {
+
+	//console.log(buffer, buffer.byteLength);
 
 	var headerSize = 16;
 
@@ -53,7 +30,7 @@ GeometryReader.prototype.updateMesh = function(buffer) {
 	var colorDataSize = colorDataCount * Uint8Array.BYTES_PER_ELEMENT
 	var faceDataSize  = faceDataCount  * Uint16Array.BYTES_PER_ELEMENT;
 
-	console.log(vertDataCount, colorDataCount, faceDataCount);
+	//console.log(vertDataCount, colorDataCount, faceDataCount);
 	
 	if(vertDataCount > 0) {
 		var vertData  = new Float32Array(buffer, headerSize, vertDataCount);

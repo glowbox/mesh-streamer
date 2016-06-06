@@ -1,10 +1,11 @@
 var meshGeom;
 
-var streamer = new GeometryStreamer("Joe Shmoe", "The Torus of Troooth");
 
-var gridResolution = 15;
+
+var gridResolution = Math.floor(Math.random() * 15 + 3);//15;
+var blueComponent = Math.random();
+var animationFrequency = Math.random() * 0.01;
 var useBufferGeom = false;
-
 
 var core = {
 	"camera" : null,
@@ -88,7 +89,7 @@ function resizeViewport(width, height) {
 
 function updateBufferGeom() {
 
-	var now = new Date().getTime() * 0.001;
+	var now = new Date().getTime() * animationFrequency;
 
 	var verts  = meshGeom.getAttribute("position");
 	var colors = meshGeom.getAttribute("color");
@@ -108,7 +109,7 @@ function updateBufferGeom() {
 
 function updateGeom() {
 
-	var now = new Date().getTime() * 0.001;
+	var now = new Date().getTime() * animationFrequency;
 	var faceVerts = ['a', 'b', 'c'];
 
 	for(var i = 0; i < meshGeom.vertices.length; i++) {
@@ -119,13 +120,13 @@ function updateGeom() {
 		var vx = meshGeom.vertices[ meshGeom.faces[f].a ].x;
 		var vy = meshGeom.vertices[ meshGeom.faces[f].a ].y;
 
-		var r = Math.cos( vx + now*3) * 0.5 + 0.5;
-		var g = Math.cos( vy + now*1.231) * 0.5 + 0.5;
+		var r = Math.cos( vx + now * 3) * 0.5 + 0.5;
+		var g = Math.cos( vy + now * 1.231) * 0.5 + 0.5;
 
 		r = ~~(r * 255) / 255;
 		g = ~~(g * 255) / 255;
 		
-		meshGeom.faces[f].color.setRGB(r,g ,0.5 );
+		meshGeom.faces[f].color.setRGB(r, g , blueComponent );
 	}
 
 	meshGeom.colorsNeedUpdate = true;
@@ -134,6 +135,13 @@ function updateGeom() {
 
 
 function render() {
+
+	var status = streamer.getDebugStatus();
+	var statusText = [];
+	for(var itm in status) {
+		statusText.push(itm + ": " + status[itm]);
+	}
+	document.getElementById("status").innerHTML = statusText.join("<br>");
 
 	if(useBufferGeom){
 		updateBufferGeom();
