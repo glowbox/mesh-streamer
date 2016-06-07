@@ -36,7 +36,8 @@ body: JSON identifying the mesh source, following this schema:
 	{
 		"author": "Name of the developer/artist",
 		"title" : "name of the art piece",
-		"platform" : "what platform is this coming from?"
+		"platform" : "what platform is this coming from?",
+		"slot" : 2  // OPTIONAL: the desired slot to use if available.
 	}
 	
 response: JSON result of the registration request.

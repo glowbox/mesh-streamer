@@ -22,6 +22,7 @@ var MeshReaderWebsocket = function(targetSlot) {
 
 		self.socket.on("mesh", function(buffer) {
 			self.geometryReader.updateMesh(buffer);
+			console.log("Got frame.");
 			self.dataCount++;
 		});
 	});

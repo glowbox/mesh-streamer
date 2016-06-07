@@ -16,6 +16,7 @@ MeshReaderHTTP.prototype.update = function(_callback) {
 	xhr.open("GET", "/mesh/" + this.slotIndex, true);
 	xhr.timeout = 1000;
 	xhr.responseType = "arraybuffer";
+	
 	xhr.onload = function(req) {
 		
 		if(xhr.status == 200){

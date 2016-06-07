@@ -2,7 +2,7 @@ var meshGeom;
 
 
 
-var gridResolution = Math.floor(Math.random() * 15 + 3);//15;
+var gridResolution = Math.floor(Math.random() * 15 + 3);
 var blueComponent = Math.random();
 var animationFrequency = Math.random() * 0.01;
 var useBufferGeom = false;

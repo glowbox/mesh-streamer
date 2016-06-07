@@ -1,4 +1,4 @@
-var MeshSenderWebsocket = function(author, title) {
+var MeshSenderWebsocket = function(author, title, desiredSlot) {
 
 	this.socket = io({transports : ["websocket"]});
 	this.socket.binaryType = 'arraybuffer';
@@ -16,6 +16,16 @@ var MeshSenderWebsocket = function(author, title) {
 		"index" : -1
 	};
 
+	this.info = {
+		"author" 	: author,
+		"title"		: title,
+		"platform" 	: "THREEJS"
+	};
+
+	if(desiredSlot !== null) {
+		this.info.slot = desiredSlot;
+	}
+
 	this.isRegistered = false;
 	this.readyToSend = true;
 
@@ -24,11 +34,7 @@ var MeshSenderWebsocket = function(author, title) {
 	this.socket.on("connect", function() {
 		
 		self.connected = true;
-		self.socket.emit("register", {
-			"platform"  : "THREEJS",
-			"author"    : author,
-			"title"     : title
-		});
+		self.socket.emit("register", self.info);
 	});
 
 	this.socket.on("register", function(response){

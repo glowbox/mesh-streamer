@@ -1,16 +1,20 @@
-var MeshSenderHTTP = function(author, title) {
+var MeshSenderHTTP = function(author, title, desiredSlot) {
 	this.info = {
 		"author" 	: author,
 		"title"		: title,
 		"platform" 	: "THREEJS"
 	};
 
+	if(desiredSlot !== null) {
+		this.info.slot = desiredSlot;
+	}
+
 	this.activeSlot = {
 		"index" : -1,
 		"key" : null
 	};
 
-	this.debug = true;
+	this.debug = false;
 	this.debugOverlay = null;
 
 	if(this.debug) {
@@ -62,6 +66,8 @@ MeshSenderHTTP.prototype._registerSlot = function() {
 	var self = this;
 	var xhr = new XMLHttpRequest();
 	xhr.open("POST", "/mesh/register", true);
+	xhr.responseType = "text";
+	xhr.setRequestHeader("Content-Type", "text/json");
 
 	xhr.onload = function(req) {
 		var slotInfo = JSON.parse(xhr.responseText);
@@ -78,7 +84,9 @@ MeshSenderHTTP.prototype._registerSlot = function() {
 	};
 
 	var jsonData = JSON.stringify(this.info);
+	
 	console.log("Sending: " + jsonData);
+
 	xhr.send(jsonData);
 }
 
@@ -88,20 +96,22 @@ MeshSenderHTTP.prototype._sendFrame = function(buffer) {
 	var self = this;
 
 	if(!this.isRegistered || this.updateInProgress) {
-		console.log("Skipped frame, still transmitting..");
 		return;
 	}
 
 	this.updateInProgress = true;
 
 	var xhr = new XMLHttpRequest();
-	console.log("/mesh/" + this.activeSlot.index + "/frame");
+	//console.log("/mesh/" + this.activeSlot.index + "/frame");
 	xhr.open("POST", "/mesh/" + this.activeSlot.index + "/frame", true);
 	
 	xhr.setRequestHeader("slot-key", this.activeSlot.key);
 	xhr.responseType = "arraybuffer";
+	xhr.setRequestHeader("Content-Type", "application/octet-stream");
 
 	xhr.onerror = function(){
+		self.updateInProgress = false;
+		self.isRegistered = false;
 		console.log("ERROR in http request.");
 	}
 
@@ -111,15 +121,11 @@ MeshSenderHTTP.prototype._sendFrame = function(buffer) {
 		} else {
 			self.isRegistered = false;
 		}
-		
-		
 
-		setTimeout(function() {
-			self.updateInProgress = false;
-			if(self.debug) {
+		if(self.debug) {
 			self.debugOverlay.classList.remove("transmitting");
 		}
-		}, 150);
+		self.updateInProgress = false;
 	};
 	
 	if(this.debug) {
@@ -127,9 +133,8 @@ MeshSenderHTTP.prototype._sendFrame = function(buffer) {
 	}
 
 	try{
-		var packet = new Uint8Array(buffer);
-		xhr.send(packet.buffer);
-		console.log("SENT PACKET");
+		xhr.send(buffer);
+		//console.log("SENT PACKET");
 	} catch(ex) {
 		
 	}

@@ -58,7 +58,7 @@ document.getElementById("disconnected").classList.add("hidden");
 	socket.emit("register-admin");
 
 	socket.on("slots", function(slots) {
-		console.log("slots changed", slots);
+		//console.log("slots changed", slots);
 		renderSlots(slots);
 	});
 
@@ -148,7 +148,7 @@ var thumbnailTimeout = null;
 
 
 function updateNextThumbnail() {
-	console.log(connectedSlots);
+	
 	if(connectedSlots.length > 0) {
 		var slotId = connectedSlots[++lastUpdated % connectedSlots.length];
 		reader.setSlotIndex(slotId);
