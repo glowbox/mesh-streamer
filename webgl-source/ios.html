@@ -1,0 +1,51 @@
+
+
+<html>
+
+
+<head>
+</head>
+
+<body>
+
+<script>
+var self = this;
+
+	if(!this.isRegistered || this.updateInProgress) {
+		return;
+	}
+
+	this.updateInProgress = true;
+
+	var xhr = new XMLHttpRequest;
+	
+	xhr.open("POST", "/mesh/" + this.activeSlot.index + "/frame", true);
+	
+	xhr.setRequestHeader("slot-key", this.activeSlot.key);
+	xhr.responseType = "arraybuffer";
+
+	xhr.onload = function(req) {
+		if(xhr.status == 200) {
+			// success!
+		} else {
+			self.isRegistered = false;
+		}
+		
+		if(self.debug) {
+			self.debugOverlay.classList.remove("transmitting");
+		}
+
+		setTimeout(function() {
+			self.updateInProgress = false;
+		}, 150);
+	};
+	
+	if(this.debug){
+		this.debugOverlay.classList.add("transmitting");
+	}
+	xhr.send(buffer);
+</script>
+</body>
+
+
+</html>

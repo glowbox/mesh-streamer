@@ -10,6 +10,16 @@ var MeshSenderHTTP = function(author, title) {
 		"key" : null
 	};
 
+	this.debug = true;
+	this.debugOverlay = null;
+
+	if(this.debug) {
+		this.debugOverlay = document.createElement("div");
+		this.debugOverlay.className = "network-status-overlay";
+		
+		document.body.appendChild(this.debugOverlay);
+	}
+
 	this.isRegistered = false;
 	this.updateInProgress = false;
 	this.geometryProcessor = new GeometryProcessor();
@@ -35,7 +45,7 @@ MeshSenderHTTP.prototype.update = function(geometry){
 
 
 MeshSenderHTTP.prototype._getSlots = function() {
-	var xhr = new XMLHttpRequest;
+	var xhr = new XMLHttpRequest();
 	xhr.open("GET", "/mesh", false);
 
 	xhr.onload = function(req) {
@@ -50,7 +60,7 @@ MeshSenderHTTP.prototype._getSlots = function() {
 MeshSenderHTTP.prototype._registerSlot = function() {
 	
 	var self = this;
-	var xhr = new XMLHttpRequest;
+	var xhr = new XMLHttpRequest();
 	xhr.open("POST", "/mesh/register", true);
 
 	xhr.onload = function(req) {
@@ -78,15 +88,22 @@ MeshSenderHTTP.prototype._sendFrame = function(buffer) {
 	var self = this;
 
 	if(!this.isRegistered || this.updateInProgress) {
+		console.log("Skipped frame, still transmitting..");
 		return;
 	}
 
-	var xhr = new XMLHttpRequest;
-	
+	this.updateInProgress = true;
+
+	var xhr = new XMLHttpRequest();
+	console.log("/mesh/" + this.activeSlot.index + "/frame");
 	xhr.open("POST", "/mesh/" + this.activeSlot.index + "/frame", true);
 	
 	xhr.setRequestHeader("slot-key", this.activeSlot.key);
 	xhr.responseType = "arraybuffer";
+
+	xhr.onerror = function(){
+		console.log("ERROR in http request.");
+	}
 
 	xhr.onload = function(req) {
 		if(xhr.status == 200) {
@@ -94,14 +111,28 @@ MeshSenderHTTP.prototype._sendFrame = function(buffer) {
 		} else {
 			self.isRegistered = false;
 		}
+		
+		
 
-		self.updateInProgress = false;
+		setTimeout(function() {
+			self.updateInProgress = false;
+			if(self.debug) {
+			self.debugOverlay.classList.remove("transmitting");
+		}
+		}, 150);
 	};
-
-
-	this.updateInProgress = true;
 	
-	xhr.send(buffer);
+	if(this.debug) {
+		this.debugOverlay.classList.add("transmitting");
+	}
+
+	try{
+		var packet = new Uint8Array(buffer);
+		xhr.send(packet.buffer);
+		console.log("SENT PACKET");
+	} catch(ex) {
+		
+	}
 }
 
 
@@ -111,7 +142,7 @@ MeshSenderHTTP.prototype._unregister = function(index, key) {
 		return;
 	}
 
-	var xhr = new XMLHttpRequest;
+	var xhr = new XMLHttpRequest();
 	
 	xhr.open("POST", "/mesh/" + self.activeSlot.index + "/stop", true);
 	xhr.setRequestHeader("slot-key", self.activeSlot.key);

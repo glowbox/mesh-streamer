@@ -53,6 +53,11 @@ GeometryProcessor.prototype._updateBuffers = function(positionCount, colorCount,
 		this.buffers.color 		= new Uint8Array(this.outputBuffer,  headerSize + positionDataSize, colorDataCount);
 		this.buffers.index  	= new Uint16Array(this.outputBuffer,  headerSize + positionDataSize + colorDataSize, indexDataCount);
 
+		this.buffers.header[0] = 0x454D;
+		this.buffers.header[1] = 0x4853;
+		this.buffers.header[2] = 0x4144;
+		this.buffers.header[3] = 0x4154;
+		
 		this.buffers.header[4] = positionDataCount / 3;
 		this.buffers.header[5] = colorDataCount / 3;   // three bytes per vertex (r,g,b)
 		this.buffers.header[6] = indexDataCount / 3;

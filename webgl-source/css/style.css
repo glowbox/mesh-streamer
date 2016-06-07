@@ -13,3 +13,17 @@ body{
 	color:white;
 	font-family:monospace;
 }
+
+
+.network-status-overlay {
+	width:30px;
+	height:30px;
+	position:absolute;
+	right:0px;
+	top:0px;
+	background-color:#808080;
+}
+
+.network-status-overlay.transmitting {
+	background-color:#9cfa21;
+}
