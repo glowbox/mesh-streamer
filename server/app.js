@@ -2,15 +2,12 @@ var express   = require('express');
 var app       = express();
 var server    = require("http").createServer(app);
 var bodyParser = require('body-parser');
-var rawBody = require("raw-body");
 
 var zlib = require('zlib');
 var fs = require('fs');
 
-var WebsocketMeshSource = require("./WebsocketMeshSource");
-
 // slots will be released if a client doesn't send an update within this interval.
-var SOURCE_TIMEOUT_THRESHOLD = 2000; //milliseconds, 
+var SOURCE_TIMEOUT_THRESHOLD = 3500; //milliseconds, 
 
 var slots = [
   {
@@ -43,7 +40,7 @@ var slotFrames = [null, null, null];
 var bytesRecieved = 0;
 
 var port           = 8080;
-var saveFirstFrame = false;
+var saveFirstFrame = true;
 
 
 function slotsChanged() {
@@ -102,7 +99,7 @@ function getFreeSlots() {
     }
   });
 
-  console.log("Free slots: ", freeSlots);
+  // console.log("Free slots: ", freeSlots);
 
   return freeSlots;
 }
@@ -117,8 +114,35 @@ function getRandomFreeSlot() {
   }
 }
 
+function frameReceived(slotIndex, frameData){
+  bytesRecieved += frameData.length;
+
+  slots[slotIndex].lastContact = new Date().getTime();
+  slotFrames[slotIndex] = frameData;
+
+  if(saveFirstFrame){
+    saveFirstFrame = false;
+    writeMeshToFile("debug.mesh", frameData);
+  }
+
+  meshClients.forEach( (client) => {
+    if(client.ready && (client.slot == slotIndex)) {
+      client.connection.emit("mesh", frameData);
+    }
+  });
+}
+
+
+app.use( (req, res, next ) => {
+  res.header('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+  res.header('Expires', '-1');
+  res.header('Pragma', 'no-cache');
+  next();
+});
 app.use(express.static('../'));
 app.use(bodyParser.raw({"type" : "*/*"}));
+
+
 
 app.get("/mesh", (req, res) => {
   var slotInfo = [];
@@ -151,10 +175,19 @@ app.get("/mesh/:index", (req, res) => {
 
 
 app.post("/mesh/register", (req, res) => {
-  var slotIndex = getRandomFreeSlot();
+  
+  var slotIndex = -1;
+  var info = JSON.parse(req.body);
+
+  if(info.slot && slots[info.slot].free) {
+    slotIndex = info.slot;
+    console.log("Source registering for specific slot: " + slotIndex );
+    } else {
+    slotIndex = getRandomFreeSlot();
+    console.log("Source registering with random slot: " + slotIndex );
+  }
+
   if(slotIndex !== -1) {
-    console.log("Body: " + req.body);
-    var info = JSON.parse(req.body.toString());
     var key = claimSlot(slotIndex, info);
     if(key) {
       res.status(200);
@@ -181,6 +214,7 @@ app.post("/mesh/register", (req, res) => {
 
 
 app.post("/mesh/:index/frame", (req, res) => {
+  
   var slotIndex = parseInt(req.params.index);
 
   if(isNaN(slotIndex) || (slotIndex < 0) || (slotIndex > slots.length - 1)) {
@@ -190,15 +224,19 @@ app.post("/mesh/:index/frame", (req, res) => {
   
   if(parseInt(req.get("slot-key")) == slots[slotIndex].key) {
 
-    //console.log("Got a frame!");
-    slots[slotIndex].lastContact = new Date().getTime();
+    if(Buffer.isBuffer(req.body)) {
+      //console.log("Got a frame! ", req.body.length);
+      frameReceived(slotIndex, Buffer.from(req.body));
+      //slots[slotIndex].lastContact = new Date().getTime();
 
-    rawBody( req, (err, rawRes) => {
-      //console.log("Raw body: ", rawRes.length);
-      slotFrames[slotIndex] = Buffer.from(rawRes);
-      bytesRecieved += rawRes.length;
-      res.end("Thanks.");
-    });
+     // slotFrames[slotIndex] = Buffer.from(req.body);
+     // bytesRecieved += req.body.length;
+      
+    } else {
+      console.log("Error: Request body is not a Buffer.");
+    }
+
+    res.end("Thanks.");
 
   } else {
     res.status(404);
@@ -207,6 +245,7 @@ app.post("/mesh/:index/frame", (req, res) => {
 });
 
 
+/*
 app.post("/mesh/:index/stop", (req, res) => {
   
   var slotIndex = req.params.index;
@@ -216,15 +255,17 @@ app.post("/mesh/:index/stop", (req, res) => {
 
   if(parseInt(req.get("slot-key")) == slots[slotIndex].key) {
     console.log("Source is unregistering from slot: " + slotIndex);
+    
     releaseSlot(slotIndex);
     res.end();
   } else {
     console.log("Got a frame but the key was wrong.");
+    
     res.status(404);
     res.end("Nope.");
   }
 });
-
+*/
 
 
 var io = require('socket.io')(server);
@@ -255,7 +296,17 @@ io.sockets.on('connection', function (socket) {
 
 
   socket.on("register", function(info) {
-    var slotIndex = getRandomFreeSlot();
+
+    var slotIndex = -1;
+
+    if(info.slot && slots[info.slot].free) {
+      slotIndex = info.slot;
+      console.log("Source registering for specific slot: " + slotIndex );
+    } else {
+      slotIndex = getRandomFreeSlot();
+      console.log("Source registering with random slot: " + slotIndex );
+    }
+
     if(slotIndex !== -1) {
       var key = claimSlot(slotIndex, info);
       if(key) {
@@ -278,16 +329,25 @@ io.sockets.on('connection', function (socket) {
 
   socket.on("frame", (frameData) => {
     if((slotId !== -1) && (slots[slotId].key == slotKey)) {
-      bytesRecieved += frameData.length;
+
+      frameReceived(slotId, Buffer.from(frameData));
+
+      /*bytesRecieved += frameData.length;
 
       slots[slotId].lastContact = new Date().getTime();
       slotFrames[slotId] = frameData;
+
+      if(saveFirstFrame){
+        saveFirstFrame = false;
+        writeMeshToFile("debug.mesh", frameData);
+      }
 
       meshClients.forEach( (client) => {
         if(client.ready && (client.slot == slotId)) {
           client.connection.emit("mesh", frameData);
         }
       });
+      */
 
       socket.emit("ready");
     } else {
