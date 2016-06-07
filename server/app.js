@@ -7,7 +7,7 @@ var zlib = require('zlib');
 var fs = require('fs');
 
 // slots will be released if a client doesn't send an update within this interval.
-var SOURCE_TIMEOUT_THRESHOLD = 3500; //milliseconds, 
+var SOURCE_TIMEOUT_THRESHOLD = 2500; //milliseconds, 
 
 var slots = [
   {
@@ -40,7 +40,7 @@ var slotFrames = [null, null, null];
 var bytesRecieved = 0;
 
 var port           = 8080;
-var saveFirstFrame = true;
+var saveFirstFrame = false;
 
 
 function slotsChanged() {
