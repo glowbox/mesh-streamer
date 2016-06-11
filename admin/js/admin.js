@@ -114,7 +114,9 @@ document.getElementById("disconnected").classList.add("hidden");
 	});
 
 	socket.on("stats", function(stats) {
-		console.log(stats.mbps);
+		document.getElementById("ip-address").innerHTML = stats.ipAddresses.join(", ");
+		document.getElementById("data-rate").innerHTML = stats.mbps.toFixed(2);
+		//console.log(ipAddresses);
 	});
 
 	socket.on("disconnect", function() {

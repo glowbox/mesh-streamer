@@ -39,7 +39,18 @@ A:hover{
 	padding-top:5px;
 	padding-bottom:5px;
 	
-	border-right:1px solid #40526b;
+	border-right:1px solid #28313e;
+}
+
+#stats{
+	float:right;
+	padding-right:20px;
+}
+
+#stats DIV {
+	text-align:right;
+	font-size:12px;
+	text-indent:20px;
 }
 
 
