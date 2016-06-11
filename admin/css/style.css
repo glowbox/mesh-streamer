@@ -1,11 +1,21 @@
 html,
 body{
+	background-color:#28313e;
 	margin:0;
 	padding:0;
+	font-family:sans-serif;
+	color:#b6d0f5;
 }
 
-tr.empty td {
-	color:#808080;
+A,
+A:hover,
+A:active,
+A:visited {
+	color:#f6ffb7;
+}
+
+A:hover{
+	color:#f6ffb7;
 }
 
 #slot-list {
@@ -13,9 +23,52 @@ tr.empty td {
 	border-collapse:collapse;
 }
 
-#slot-list tr td {
-	margin:0px;
+#slot-list th {
+	background-color:#435773;
+	
+	font-weight:normal;
+	font-size:12px;
+	
+	padding:10px;
+	padding-top:5px;
+	padding-bottom:5px;
+	
+	border-right:1px solid #40526b;
+
 }
+
+
+#slot-list tr td {
+	padding:10px;
+	padding-top:5px;
+	padding-bottom:5px;
+	margin:0px;
+	border-right:1px solid #40526b;
+	font-weight:normal;
+	font-size:14px;
+}
+
+#slot-list tr.empty td {
+	color:#aeaeae;
+}
+
+
+td.slot-index {
+	text-align:center;
+}
+
+
+td.slot-platform,
+td.slot-key,
+td.slot-preview {
+	text-align:center;
+}
+
+
+#slot-list tr:nth-child(even) {
+	background-color:#2d3b4e;
+}
+
 
 #disconnected {
 	text-align:center;

@@ -16,7 +16,9 @@ var GeometryReader = function() {
 
 GeometryReader.prototype.updateMesh = function(buffer) {
 
-	//console.log(buffer, buffer.byteLength);
+	if(buffer.byteLength == 0){
+		return;
+	}
 
 	var headerSize = 16;
 

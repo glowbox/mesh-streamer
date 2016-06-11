@@ -7,19 +7,28 @@
 	
 	<div id="disconnected" class="hidden"><label>DISCONNECTED</label></div>
 
-	<table border="1" cellspacing="0" id="slot-list">
-		<thead><th width="40">Slot</th><th>Author</th><th>Title</th><th>Platform</th><th>Key</th><th>Actions</th></thead>
+	<h2>Mesh Streamer Admin</h2>
+
+	<table border="0" cellspacing="0" id="slot-list">
+		<thead>
+			<th width="5%">Slot</th>
+			<th width="20%">Author</th>
+			<th width="20%">Title</th>
+			<th width="10%">Platform</th>
+			<th width="10%">Key</th>
+			<th width="10%">Preview</th>
+			<th width="10%">Actions</th>
+		</thead>
 		<tbody id="slots"></tbody>
 	</table>
 	
 	<br>
-	<!-- hard coded number of canvases for now.. this should be dynamic -->
-	<canvas id="thumbnail-0" width="320" height="200"></canvas>
-	<canvas id="thumbnail-1" width="320" height="200"></canvas>
-	<canvas id="thumbnail-2" width="320" height="200"></canvas>
+
+	<div id="thumbnail-container"></div>
 
 
-	<script src="http://purdybot.local:8080/socket.io/socket.io.js"></script>
+
+	<script src="/socket.io/socket.io.js"></script>
 
 	<script src="js/three.min.js"></script>
 	<script src="js/OrbitControls.js"></script>

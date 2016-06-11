@@ -19,7 +19,7 @@ MeshReaderHTTP.prototype.update = function(_callback) {
 	
 	xhr.onload = function(req) {
 		
-		if(xhr.status == 200){
+		if(xhr.status == 200) {
 			self.geometryReader.updateMesh(xhr.response);
 		}
 

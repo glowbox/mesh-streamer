@@ -1,53 +1,107 @@
 var connectedSlots = [];
-var wasConnected = false;
 
-function addCell(row, content) {
+var wasConnected = false;
+var slotThumbnailsInitialized = false;
+
+
+var thumbnailWidth = 80;
+var thumbnailHeight = 60;
+
+var lastUpdated = 0;
+var reader = new MeshReaderHTTP(0);
+
+
+
+function addCell(row, content, cssClass) {
 	var td = document.createElement("td");
 	if(content !== undefined) {
 		td.innerHTML = content;
+	}
+	if(cssClass != null){
+		td.className = cssClass;
 	}
 	row.appendChild(td);
 
 	return td;
 }
 
-function renderSlots(slots) {
+var slotRows = [];
 
+function buildTable(slotCount) {
+	
 	var tbody = document.getElementById("slots");
 	tbody.innerHTML = "";
 
-	connectedSlots = [];
-	for(var i = 0; i < slots.length; i++){
+	for(var i = 0; i < slotCount; i++){
+
 		var tr = document.createElement("tr");
 		
 		tr.id = "slot-" + i;
-		tr.className = slots[i].free ? "empty" : "full";
-
-		addCell(tr, i);
-		if(slots[i].free) {
-
-			addCell(tr, "--");
-			addCell(tr, "--");
-			addCell(tr, "--");
-			addCell(tr, "--");
-			addCell(tr, "&nbsp;");
-
-			var ctx = document.getElementById("thumbnail-" + i).getContext("2d");
-			ctx.fillStyle = "#808080";
-			ctx.fillRect(0, 0, 320, 200);
-		} else {
-			connectedSlots.push(i);
-
-			addCell(tr, slots[i].info.author);
-			addCell(tr, slots[i].info.title);
-			addCell(tr, slots[i].info.platform);
-			addCell(tr, slots[i].key);
-
-			addCell(tr, "<a href=\"#\" class=\"button eject\">Eject</a>");
-		}
 		
+		addCell(tr, i, "slot-index");
+
+		var slotThumb = document.createElement("canvas");
+		
+		slotThumb.width = thumbnailWidth;
+		slotThumb.height = thumbnailHeight;
+		slotThumb.id = "thumbnail-" + i;
+
+		var slotData = {
+			"_row" : tr,
+			"author" : addCell(tr, "", "slot-author"),
+			"title" : addCell(tr, "--", "slot-title"),
+			"platform" : addCell(tr, "--", "slot-platform"),
+			"key" : addCell(tr, "--", "slot-key"),
+			"preview" : addCell(tr, "", "slot-preview"),
+			"actions" : addCell(tr, "&nbsp;", "slot-actions")
+		}
+
+		slotData.preview.appendChild(slotThumb);
+
+		slotRows.push(slotData);
 		tbody.appendChild(tr);
 	}
+}
+
+function renderSlots(slots) {
+
+	if(!slotThumbnailsInitialized) {
+		
+		buildTable(slots.length);
+
+		
+	}
+	slotThumbnailsInitialized = true;
+
+	connectedSlots = [];
+
+	for(var i = 0; i < slots.length; i++){
+
+
+		var ctx = document.getElementById("thumbnail-" + i).getContext("2d");
+		ctx.fillStyle = "#2a2b2c";
+		ctx.fillRect(0, 0, 320, 200);
+
+		slotRows[i]._row.className = slots[i].free ? "empty" : "full";
+
+		if(slots[i].free) {
+			slotRows[i].author.innerHTML = "--";
+			slotRows[i].title.innerHTML = "--";
+			slotRows[i].platform.innerHTML = "--";
+			slotRows[i].key.innerHTML = "--";
+			slotRows[i].actions.innerHTML = "--";
+			
+		} else {
+			connectedSlots.push(i);
+			
+			slotRows[i].author.innerHTML = slots[i].info.author;
+			slotRows[i].title.innerHTML = slots[i].info.title;
+			slotRows[i].platform.innerHTML = slots[i].info.platform;
+			slotRows[i].key.innerHTML = slots[i].key;
+			slotRows[i].actions.innerHTML = "<a href=\"#\" class=\"button eject\">Eject</a>"
+		}		
+	}
+	
 }
 
 var socket = io({transports : ["websocket"]});
@@ -90,9 +144,6 @@ tbody.addEventListener("click", function(e){
 
 
 
-var lastUpdated = 0;
-var reader = new MeshReaderHTTP(0);
-
 var core = {
 	"camera" : null,
 	"scene" : null,
@@ -108,7 +159,7 @@ function initializeCore() {
 	//core.controls = new THREE.OrbitControls( core.camera );
 	//core.controls.noKeys = true;
 
-	core.camera.position.set(6, 1.75, 11.5);
+	core.camera.position.set(6, 3.75, 11.5);
 	core.camera.lookAt(core.scene.position);
 }
 
@@ -126,11 +177,15 @@ function resizeViewport(width, height) {
 
 function render(slotId) {
 
+	if(!slotThumbnailsInitialized){
+		return;
+	}
+
 	core.renderer.render(core.scene, core.camera);
 
 	var ctx = document.getElementById("thumbnail-" + slotId).getContext("2d");
 
-	ctx.clearRect(0, 0, 320, 200);
+	ctx.clearRect(0, 0, thumbnailWidth, thumbnailHeight);
 	ctx.drawImage(core.renderer.domElement, 0, 0);
 }
 
@@ -171,7 +226,7 @@ function initialize() {
 
 	core.scene.add( obj );
 	
-	resizeViewport(320, 200);
+	resizeViewport( thumbnailWidth, thumbnailHeight);
 }
 
 

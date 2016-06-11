@@ -13,38 +13,63 @@ var slots = [
   {
     free: true,
     info: {},
-    origin: [1,0,0],
+    origin: [1, 0, 0],
+    angle: 0.785398, // 45 degrees
     key: 0,
+
     lastContact: 0
   },
   {
     free: true,
     info: {},
     origin: [0,1,0],
+    angle: 0,
     key: 0,
+
     lastContact: 0
   },
   {
     free: true,
     info: {},
     origin: [2,0,0],
+    angle: 3.49066,
     key: 0,
-    lastContact: 0
+    
+    lastContact: 0,
+    stats: {},
+    lastFrame: {}
   }
 ];
 
-// store the last known frame of geometry data for each slot.
-var slotFrames = [null, null, null];
 
+function addSlot(originX, originY, originZ, angle) {
+  slots.push({
+    ree: true,
+    info: {},
+    origin: [originX, originY, originZ],
+    angle: angle,
+    key: 0,
+    
+    lastFrame: null,
+    lastContact: 0,
+    stats: {}
+  });
+}
 
 var bytesRecieved = 0;
 
-var port           = 8080;
-var saveFirstFrame = false;
+var port            = 8080;
+var saveFirstFrame  = false;
+var lastSlotKey     = 100;
 
 
 function slotsChanged() {
   io.to("admin").emit("slots", slots);
+}
+
+function sendAdminStats() {
+
+ // io.to("admin").emit("stats", slotStats);
 }
 
 function purgeInactiveSlots() {
@@ -62,14 +87,43 @@ function purgeInactiveSlots() {
   });
 }
 
+// check for inactive slots periodically.
 setInterval(purgeInactiveSlots, 500);
 
+function generateSlotKey() {
+  var found = false;
+  var key = -1;
+  var tries = 0;
+  while(!found) {
+    
+    found = true;
+    key = Math.floor(Math.random() * 65000) + 1;
+
+    // make sure no other slots are using the key (unlikely but possible).
+    slots.forEach(function(slot){
+      if(slot.key == key){
+        found = false;
+      }
+    });
+
+    tries++;
+    if(!found && (tries > 50)) {
+      console.log("Unable to find an available slot key after 20 attempts, something is fishy...");
+
+      // just bail, something is very wrong..
+      return key;
+    }
+  }
+
+  return key;
+}
 
 function claimSlot(index, info) {
   if(slots[index].free) {
+
     slots[index].free = false;
     slots[index].info = info;
-    slots[index].key = Math.floor(Math.random() * 65535);
+    slots[index].key = generateSlotKey();
     slots[index].lastContact = new Date().getTime();
 
     slotsChanged();
@@ -83,9 +137,10 @@ function claimSlot(index, info) {
 function releaseSlot(index) {
   if(!slots[index].free) {
     slots[index].info = {};
-    slots[index].lastFrame = null;
     slots[index].free = true;
     slots[index].key = 0;
+
+    slots[index].lastFrame = null;
 
     slotsChanged();
   }
@@ -98,8 +153,6 @@ function getFreeSlots() {
       freeSlots.push(index);
     }
   });
-
-  // console.log("Free slots: ", freeSlots);
 
   return freeSlots;
 }
@@ -118,12 +171,14 @@ function frameReceived(slotIndex, frameData){
   bytesRecieved += frameData.length;
 
   slots[slotIndex].lastContact = new Date().getTime();
-  slotFrames[slotIndex] = frameData;
+  slots[slotIndex].lastFrame = frameData;
 
   if(saveFirstFrame){
     saveFirstFrame = false;
     writeMeshToFile("debug.mesh", frameData);
   }
+
+  //debugMeshBuffer(frameData, "", true);
 
   meshClients.forEach( (client) => {
     if(client.ready && (client.slot == slotIndex)) {
@@ -147,12 +202,24 @@ app.use(bodyParser.raw({"type" : "*/*"}));
 app.get("/mesh", (req, res) => {
   var slotInfo = [];
   
-  slots.forEach((item) => {
+  slots.forEach((item, index) => {
+    if(!item.free && (item.lastFrame != null)){
+      slotInfo.push({
+        "free" : false,
+        "info" : item.info,
+        "origin" : item.origin,
+        "angle" : item.angle
+      });
+    }
+    else 
+    {
     slotInfo.push({
-      "free" : item.free,
-      "info" : item.info,
-      "origin" : item.origin
-    });
+        "free" : true,
+        "info" : {},
+        "origin" : item.origin,
+        "angle" : item.angle
+      });
+    }
   });
 
   res.send(JSON.stringify(slotInfo));
@@ -170,7 +237,7 @@ app.get("/mesh/:index", (req, res) => {
 
   res.status(200);
 
-  res.end(slotFrames[slotIndex]);
+  res.end(slots[slotIndex].lastFrame);
 });
 
 
@@ -216,7 +283,7 @@ app.post("/mesh/register", (req, res) => {
 app.post("/mesh/:index/frame", (req, res) => {
   
   var slotIndex = parseInt(req.params.index);
-
+  
   if(isNaN(slotIndex) || (slotIndex < 0) || (slotIndex > slots.length - 1)) {
     res.status(404);
     res.end("Invalid slot index.");
@@ -225,18 +292,12 @@ app.post("/mesh/:index/frame", (req, res) => {
   if(parseInt(req.get("slot-key")) == slots[slotIndex].key) {
 
     if(Buffer.isBuffer(req.body)) {
-      //console.log("Got a frame! ", req.body.length);
-      frameReceived(slotIndex, Buffer.from(req.body));
-      //slots[slotIndex].lastContact = new Date().getTime();
-
-     // slotFrames[slotIndex] = Buffer.from(req.body);
-     // bytesRecieved += req.body.length;
-      
+      frameReceived(slotIndex, Buffer.from(req.body));      
     } else {
-      console.log("Error: Request body is not a Buffer.");
+      console.log("Error: Request body is not a Buffer instance.");
     }
 
-    res.end("Thanks.");
+    res.end("Thanks, friend.");
 
   } else {
     res.status(404);
@@ -281,6 +342,7 @@ var meshClients = [];
 setInterval(function() {
   console.log((bytesRecieved / 1048576).toFixed(2) + " megabytes per second");
   bytesRecieved = 0;
+  sendAdminStats();
 }, 1000);
 
 
@@ -489,6 +551,7 @@ function debugMeshBuffer(obj, author, verbose) {
   var colorDataOffset = headerSize + vertDataSize;
   var faceDataOffset  = headerSize + vertDataSize + colorDataSize;
 
+  console.log(faceDataSize + faceDataOffset, obj.length);
 
   console.log("Verts:  " + vertCount);
   console.log("Colors: " + colorCount);
