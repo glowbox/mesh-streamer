@@ -53,11 +53,17 @@ function addSlot(originX, originY, originZ, angle) {
     
     lastFrame: null,
     lastContact: 0,
-    stats: {}
+
+    stats: {
+      _framesReceived:0,
+      _bytesReceived:0,
+      currentMBps:0,
+      currentFPS:0
+    }
   });
 }
 
-var bytesRecieved = 0;
+var bytesReceived = 0;
 var currentMBps = 0;
 
 var port            = 8080;
@@ -66,17 +72,38 @@ var lastSlotKey     = 100;
 
 
 function slotsChanged() {
-  io.to("admin").emit("slots", slots);
+
+  var slotData = [];
+  slots.forEach(function(slot){
+    
+    slotData.push({
+      free: slot.free,
+      info: slot.info,
+      origin: slot.origin,
+      angle: slot.angle,
+      key: slot.key,
+    })
+  })
+
+  io.to("admin").emit("slots", slotData);
 }
 
 function sendAdminStats() {
+
+  var slotStats = [];
+  slots.forEach(function(slot){
+    slotStats.push(slot.stats);
+  });
+
   var slotStats = {
-    slots : [],
+    slots : slotStats,
     mbps : currentMBps,
     ipAddresses: serverIpAddresses
   };
 
   io.to("admin").emit("stats", slotStats);
+
+
 }
 
 function purgeInactiveSlots() {
@@ -149,6 +176,11 @@ function releaseSlot(index) {
 
     slots[index].lastFrame = null;
 
+    slots[index].stats._bytesReceived = 0;
+    slots[index].stats._framesReceived = 0;
+    slots[index].stats.currentFPS = 0;
+    slots[index].stats.currentMBps = 0;
+
     slotsChanged();
   }
 }
@@ -175,7 +207,7 @@ function getRandomFreeSlot() {
 }
 
 function frameReceived(slotIndex, frameData){
-  bytesRecieved += frameData.length;
+  bytesReceived += frameData.length;
 
   slots[slotIndex].lastContact = new Date().getTime();
   slots[slotIndex].lastFrame = frameData;
@@ -184,6 +216,9 @@ function frameReceived(slotIndex, frameData){
     saveFirstFrame = false;
     writeMeshToFile("debug.mesh", frameData);
   }
+
+  slots[slotIndex].stats._bytesReceived += frameData.length;
+  slots[slotIndex].stats._framesReceived++;
 
   //debugMeshBuffer(frameData, "", true);
 
@@ -347,9 +382,19 @@ var meshClients = [];
 
 // Print the data tranfer rate every second..
 setInterval(function() {
-  currentMBps = (bytesRecieved / 1048576)
+  
+  currentMBps = (bytesReceived / 1048576)
   console.log(currentMBps.toFixed(2) + " megabytes per second");
-  bytesRecieved = 0;
+  bytesReceived = 0;
+
+  slots.forEach(function(item) {
+    item.stats.currentFPS = item.stats._framesReceived;
+    item.stats.currentMBps = item.stats._bytesReceived;
+    item.stats._framesReceived = 0;
+    item.stats._bytesReceived = 0;
+  });
+
+
   sendAdminStats();
 }, 1000);
 
@@ -610,4 +655,4 @@ console.log("\n--------------------------------------");
 console.log("\nMesh Streaming Server Started\n");
 console.log("Server IP Address: " + serverIpAddresses.join(", "));
 console.log("Server Port:       " + port);
-console.log("----------------------------------------\n");
+console.log("\n----------------------------------------\n");

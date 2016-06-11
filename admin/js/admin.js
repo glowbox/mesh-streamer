@@ -110,6 +110,7 @@ document.getElementById("disconnected").classList.add("hidden");
 	socket.emit("register-admin");
 
 	socket.on("slots", function(slots) {
+		console.log(slots);
 		renderSlots(slots);
 	});
 

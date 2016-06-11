@@ -1,11 +1,9 @@
 var meshGeom;
 
-
-
 var gridResolution = Math.floor(Math.random() * 15 + 3);
 var blueComponent = Math.random();
 var animationFrequency = Math.random() * 0.01;
-var useBufferGeom = false;
+var waveFrequency = Math.random() * 10 + 6;
 
 var core = {
 	"camera" : null,
@@ -29,7 +27,7 @@ function initializeCore() {
 	core.controls = new THREE.OrbitControls( core.camera );
 	core.controls.noKeys = true;
 
-	core.camera.position.set(10, 3.5, 20);
+	core.camera.position.set(2, 0.75, 3);
 	core.camera.lookAt(core.scene.position);
 
 	document.body.appendChild(core.renderer.domElement);
@@ -41,24 +39,10 @@ function initializeScene() {
 	core.scene.add(ambient);
 
 	addPointLight(12, 19, 15, 0xfffbe7);
-
-	if(useBufferGeom) {
-		makeGradientPlaneBuffer();
-	} else {
-		makeGradientPlane();
-	}
+	makeGradientPlane();
+	
 }
 
-function makeGradientPlaneBuffer() {
-
-	meshGeom = new THREE.PlaneBufferGeometry( 4, 4, gridResolution, gridResolution );
-
-	var obj = new THREE.Mesh( meshGeom, new THREE.MeshLambertMaterial({vertexColors: THREE.VertexColors, color:0xffffff, "wireframe":false}) );
-
-	meshGeom.addAttribute("color", new THREE.BufferAttribute( new Float32Array(meshGeom.getAttribute("position").array.length), 3));
-
-	core.scene.add(obj);
-}
 
 function makeGradientPlane() {
 	meshGeom = new THREE.PlaneGeometry( 1, 1, gridResolution, gridResolution );
@@ -67,12 +51,12 @@ function makeGradientPlane() {
 	console.log("Elements: " + meshGeom.elementsNeedUpdate);
 	console.log("Verts:    " + meshGeom.verticesNeedUpdate);
 
-	for(var f = 0; f < meshGeom.faces.length; f++){
+	/*for(var f = 0; f < meshGeom.faces.length; f++){
 		var r = ~~(Math.random() * 255) / 255;
 		var g = ~~(Math.random() * 255) / 255;
 		var b = ~~(Math.random() * 255) / 255;
 		meshGeom.faces[f].color.setRGB(r,b,g);
-	}
+	}*/
 
 	var obj = new THREE.Mesh( meshGeom, new THREE.MeshLambertMaterial({vertexColors: THREE.FaceColors, "wireframe" : false}) );
 	
@@ -87,41 +71,21 @@ function resizeViewport(width, height) {
 }
 
 
-function updateBufferGeom() {
-
-	var now = new Date().getTime() * animationFrequency;
-
-	var verts  = meshGeom.getAttribute("position");
-	var colors = meshGeom.getAttribute("color");
-
-	var vertCount = verts.array.length;
-	for(var i = 2; i < vertCount; i += 3) {
-		verts.array[i] = Math.cos( (verts.array[i - 1] * 1) + now) * Math.sin( (verts.array[i-2] * 1) + now);
-
-		colors.array[i] = Math.cos( verts.array[i - 2] + now*3) * 0.5 + 0.5;
-		colors.array[i+1] = Math.cos( verts.array[i - 1] + now*1.231) * 0.5 + 0.5;
-	}
-
-	verts.needsUpdate  = true;
-	colors.needsUpdate = true;
-}
-
-
-function updateGeom() {
+function updateGeometry() {
 
 	var now = new Date().getTime() * animationFrequency;
 	var faceVerts = ['a', 'b', 'c'];
 
 	for(var i = 0; i < meshGeom.vertices.length; i++) {
-		meshGeom.vertices[i].z = Math.cos( meshGeom.vertices[i].y + now);
+		meshGeom.vertices[i].z = Math.cos( (meshGeom.vertices[i].y * waveFrequency) + now) * 0.125;
 	}
 
 	for(var f = 0; f < meshGeom.faces.length; f++){
 		var vx = meshGeom.vertices[ meshGeom.faces[f].a ].x;
 		var vy = meshGeom.vertices[ meshGeom.faces[f].a ].y;
 
-		var r = Math.cos( vx + now * 3) * 0.5 + 0.5;
-		var g = Math.cos( vy + now * 1.231) * 0.5 + 0.5;
+		var r = Math.cos( vx * 8 + now * 1.75) * 0.5 + 0.5;
+		var g = Math.cos( vy * 6 + now * 1.231) * 0.5 + 0.5;
 
 		r = ~~(r * 255) / 255;
 		g = ~~(g * 255) / 255;
@@ -143,12 +107,8 @@ function render() {
 	}
 	document.getElementById("status").innerHTML = statusText.join("<br>");
 
-	if(useBufferGeom){
-		updateBufferGeom();
-	} else {
-		updateGeom();	
-	}
-	
+	updateGeometry();	
+
 	streamer.update(meshGeom);
 
 	core.renderer.render(core.scene, core.camera);
