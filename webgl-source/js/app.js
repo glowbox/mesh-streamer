@@ -5,6 +5,8 @@ var blueComponent = Math.random();
 var animationFrequency = Math.random() * 0.01;
 var waveFrequency = Math.random() * 10 + 6;
 
+var useBufferGeometry = true;
+
 var core = {
 	"camera" : null,
 	"scene" : null,
@@ -39,35 +41,55 @@ function initializeScene() {
 	core.scene.add(ambient);
 
 	addPointLight(12, 19, 15, 0xfffbe7);
-	makeGradientPlane();
 	
+	if(useBufferGeometry){
+		makeBufferPlane();
+	} else {
+		makePlane();
+	}	
 }
 
 
-function makeGradientPlane() {
+
+function makeBufferPlane() {
+	meshGeom = new THREE.PlaneBufferGeometry( 1, 1, gridResolution, gridResolution );
+
+	var obj = new THREE.Mesh( meshGeom, new THREE.MeshLambertMaterial({vertexColors: THREE.FaceColors, "wireframe" : false}) );
+	meshGeom.addAttribute("color", new THREE.BufferAttribute( new Float32Array(meshGeom.getAttribute("position").array.length), 3));
+
+	core.scene.add(obj);
+}
+
+function updateBufferGeom() {
+
+	var now = new Date().getTime() * animationFrequency;
+
+	var verts  = meshGeom.getAttribute("position");
+	var colors = meshGeom.getAttribute("color");
+
+	var vertCount = verts.array.length;
+	for(var i = 2; i < vertCount; i += 3) {
+		verts.array[i] = Math.cos( (verts.array[i - 1]* waveFrequency) + now ) * Math.sin( (verts.array[i-2] * waveFrequency) + now) * 0.1;
+
+		colors.array[i] = Math.cos( verts.array[i - 2] * 8 + now * 3) * 0.5 + 0.5;
+		colors.array[i+1] = Math.cos( verts.array[i - 1] * 7 + now * 1.231) * 0.5 + 0.5;
+	}
+
+	verts.needsUpdate  = true;
+	colors.needsUpdate = true;
+}
+
+
+function makePlane() {
 	meshGeom = new THREE.PlaneGeometry( 1, 1, gridResolution, gridResolution );
 
 	console.log("Colors:   " + meshGeom.colorsNeedUpdate);
 	console.log("Elements: " + meshGeom.elementsNeedUpdate);
 	console.log("Verts:    " + meshGeom.verticesNeedUpdate);
 
-	/*for(var f = 0; f < meshGeom.faces.length; f++){
-		var r = ~~(Math.random() * 255) / 255;
-		var g = ~~(Math.random() * 255) / 255;
-		var b = ~~(Math.random() * 255) / 255;
-		meshGeom.faces[f].color.setRGB(r,b,g);
-	}*/
-
 	var obj = new THREE.Mesh( meshGeom, new THREE.MeshLambertMaterial({vertexColors: THREE.FaceColors, "wireframe" : false}) );
 	
 	core.scene.add(obj);
-}
-
-
-function resizeViewport(width, height) {
-	core.camera.aspect = width / height;
-	core.camera.updateProjectionMatrix();
-	core.renderer.setSize( width, height );
 }
 
 
@@ -98,6 +120,13 @@ function updateGeometry() {
 }
 
 
+function resizeViewport(width, height) {
+	core.camera.aspect = width / height;
+	core.camera.updateProjectionMatrix();
+	core.renderer.setSize( width, height );
+}
+
+
 function render() {
 
 	var status = streamer.getDebugStatus();
@@ -107,7 +136,11 @@ function render() {
 	}
 	document.getElementById("status").innerHTML = statusText.join("<br>");
 
-	updateGeometry();	
+	if(useBufferGeometry) {
+		updateBufferGeom();
+	} else {
+		updateGeometry();	
+	}
 
 	streamer.update(meshGeom);
 

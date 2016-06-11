@@ -13,6 +13,8 @@ var GeometryProcessor = function() {
 GeometryProcessor.prototype.update = function(geometry) {
 	if(geometry instanceof THREE.Geometry) {
 		return this._fromGeometry(geometry);
+	} else if(geometry instanceof THREE.BufferGeometry) {
+		return this._fromBufferGeometry(geometry);
 	} else {
 		return false;
 	}
@@ -23,13 +25,13 @@ GeometryProcessor.prototype._updateBuffers = function(positionCount, colorCount,
 
 	var positionDataCount  	= positionCount;
 	var colorDataCount 		= colorCount;
-	var indexDataCount  	= indexCount;
+	var indexDataCount  	= indexCount * Uint16Array.BYTES_PER_ELEMENT;
 	
 	var headerSize    = 16;
 
 	var positionDataSize  = positionDataCount 	* Float32Array.BYTES_PER_ELEMENT;
 	var colorDataSize  = colorDataCount 	* Uint8Array.BYTES_PER_ELEMENT
-	var indexDataSize  = indexDataCount 	* Uint16Array.BYTES_PER_ELEMENT;
+	var indexDataSize  = indexDataCount; // 	* Uint16Array.BYTES_PER_ELEMENT;
 
 	var payloadSize =  positionDataSize + colorDataSize + indexDataSize;
 
@@ -51,7 +53,7 @@ GeometryProcessor.prototype._updateBuffers = function(positionCount, colorCount,
 		this.buffers.header 	= new Uint16Array(this.outputBuffer, 0, headerSize);
 		this.buffers.position   = new Float32Array(this.outputBuffer, headerSize, positionDataCount);
 		this.buffers.color 		= new Uint8Array(this.outputBuffer,  headerSize + positionDataSize, colorDataCount);
-		this.buffers.index  	= new Uint16Array(this.outputBuffer,  headerSize + positionDataSize + colorDataSize, indexDataCount);
+		this.buffers.index  	= new Uint8Array(this.outputBuffer,  headerSize + positionDataSize + colorDataSize, indexDataCount);
 
 		this.buffers.header[0] = 0x454D;
 		this.buffers.header[1] = 0x4853;
@@ -60,7 +62,7 @@ GeometryProcessor.prototype._updateBuffers = function(positionCount, colorCount,
 		
 		this.buffers.header[4] = positionDataCount / 3;
 		this.buffers.header[5] = colorDataCount / 3;   // three bytes per vertex (r,g,b)
-		this.buffers.header[6] = indexDataCount / 3;
+		this.buffers.header[6] = indexCount / 3;
 	}
 
 	return payloadSize;
@@ -72,7 +74,7 @@ GeometryProcessor.prototype._fromGeometry = function(geo) {
 	var faceCount       = geo.faces.length;
 	var vertexCount 	= faceCount * 3;
 
-	var indexCount 		= vertexCount;
+	var indexCount 		= vertexCount * 2;
 	var positionCount	= vertexCount * 3;
 	var colorCount 		= vertexCount * 3;
 
@@ -80,8 +82,6 @@ GeometryProcessor.prototype._fromGeometry = function(geo) {
 		console.error("Attempting to send too much mesh data.");
 		return false;
 	}
-	
-	//console.log(positionCount, colorCount, indexCount);
 	
 	var bytesToSend = this._updateBuffers(positionCount, colorCount, indexCount);
 	if(bytesToSend == 0){
@@ -113,8 +113,7 @@ GeometryProcessor.prototype._fromGeometry = function(geo) {
 	}
 
 
-	if(colorCount > 0) {
-		
+	if(colorCount > 0) {	
 		for(i = 0; i < faceCount; i++) {
 
 			if(useFaceColors) {
@@ -137,15 +136,58 @@ GeometryProcessor.prototype._fromGeometry = function(geo) {
 				}
 			}
 		}
-
 	}
 			
 	if(indexCount > 0) {
+		var dataOffset = 0;
 		for(i = 0; i < faceCount; i++) {
-			this.buffers.index[i*3] 	= (i*3);
-			this.buffers.index[i*3+1] 	= (i*3+1);
-			this.buffers.index[i*3+2] 	= (i*3+2);
+			this.writeIndexValue(i*3,   i*3);
+			this.writeIndexValue(i*3+1, i*3+1);
+			this.writeIndexValue(i*3+2, i*3+2);
 		}
+	}
+
+	return true;
+}
+
+GeometryProcessor.prototype.writeIndexValue = function(offset, value){
+	this.buffers.index[offset*2] 	= value & 0xff;
+	this.buffers.index[offset*2+1] 	= (value>>8) & 0xff;
+}
+
+
+GeometryProcessor.prototype._fromBufferGeometry = function(meshGeom) {
+	
+	var verts  				= meshGeom.getAttribute("position").array;
+	var colors 				= meshGeom.getAttribute("color").array;
+	var faceIndexArray 		= meshGeom.index.array;
+
+
+	var positionCount = verts.length;
+	var colorCount = colors.length;
+	var indexCount = faceIndexArray.length;
+
+	/*var vertexDataSize = verts.length * 4; // 4 bytes per position value.
+	var colorDataSize = colors.length;     // 1 byte per color component.
+	var indexDataSize = faceIndexArray * 2; // 2 bytes per face index*/
+	
+	var bytesToSend = this._updateBuffers(positionCount, colorCount, indexCount);
+	
+	if(bytesToSend == 0){
+		return false;
+	}
+
+	for(i = 0; i < positionCount; i++) {
+		this.buffers.position[i] = verts[i];
+	}
+
+	for(i = 0; i < colorCount; i++){
+		this.buffers.color[i] = Math.floor(colors[i] * 255);
+	}
+
+	for(i = 0; i < indexCount; i++){
+		this.buffers.index[i * 2] = faceIndexArray[i] & 0xff;
+		this.buffers.index[i * 2 + 1] = (faceIndexArray[i] >> 8) & 0xff;
 	}
 
 	return true;

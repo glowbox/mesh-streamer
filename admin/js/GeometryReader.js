@@ -35,7 +35,9 @@ GeometryReader.prototype.updateMesh = function(buffer) {
 	//console.log(vertDataCount, colorDataCount, faceDataCount);
 	
 	if(vertDataCount > 0) {
+
 		var vertData  = new Float32Array(buffer, headerSize, vertDataCount);
+
 		if(vertDataCount != this.bufferGeometry.getAttribute("position").array.length) {
 			this.bufferGeometry.addAttribute("position", new THREE.BufferAttribute(vertData, 3));
 		} else {
@@ -62,8 +64,24 @@ GeometryReader.prototype.updateMesh = function(buffer) {
 
 	if(faceDataCount > 0) {
 		//console.log("Face data count:"  + faceDataCount);
-		var faceData  = new Uint16Array(buffer,  headerSize + vertDataSize + colorDataSize, faceDataCount);
+		//var faceData  = new Uint8Array(buffer,  headerSize + vertDataSize + colorDataSize, faceDataCount);
+
+		var faceDataBuffer = new Uint8Array(buffer,  headerSize + vertDataSize + colorDataSize, faceDataCount * 2);
+		var faceData = new Uint16Array(faceDataCount);
+		
+		for(var i = 0; i < faceDataCount; i++) {
+			faceData[i] = this.readIndexValue(faceDataBuffer, i);	
+		}
 		this.bufferGeometry.setIndex(new THREE.BufferAttribute( faceData, 1));
+		
+
 		this.bufferGeometry.getIndex().needsUpdate = true;
 	}
+}
+
+GeometryReader.prototype.readIndexValue = function(byteBuffer, offset) {
+	var result = 0;
+	result += byteBuffer[offset*2];
+	result += (byteBuffer[offset*2+1] << 8);
+	return result;
 }
