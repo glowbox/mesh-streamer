@@ -1,4 +1,7 @@
-var MeshSenderHTTP = function(author, title, desiredSlot) {
+var MeshSenderHTTP = function(serverAddress, author, title, desiredSlot) {
+	
+	this.serverAddress = serverAddress;
+
 	this.info = {
 		"author" 	: author,
 		"title"		: title,
@@ -50,7 +53,7 @@ MeshSenderHTTP.prototype.update = function(geometry){
 
 MeshSenderHTTP.prototype._getSlots = function() {
 	var xhr = new XMLHttpRequest();
-	xhr.open("GET", "/mesh", false);
+	xhr.open("GET", this.serverAddress + "/mesh", false);
 
 	xhr.onload = function(req) {
 		var list = JSON.parse(xhr.responseText);
@@ -65,7 +68,7 @@ MeshSenderHTTP.prototype._registerSlot = function() {
 	
 	var self = this;
 	var xhr = new XMLHttpRequest();
-	xhr.open("POST", "/mesh/register", true);
+	xhr.open("POST", this.serverAddress + "/mesh/register", true);
 	xhr.responseType = "text";
 	xhr.setRequestHeader("Content-Type", "text/json");
 
@@ -103,7 +106,7 @@ MeshSenderHTTP.prototype._sendFrame = function(buffer) {
 
 	var xhr = new XMLHttpRequest();
 	//console.log("/mesh/" + this.activeSlot.index + "/frame");
-	xhr.open("POST", "/mesh/" + this.activeSlot.index + "/frame", true);
+	xhr.open("POST", this.serverAddress + "/mesh/" + this.activeSlot.index + "/frame", true);
 	
 	xhr.setRequestHeader("slot-key", this.activeSlot.key);
 	xhr.responseType = "arraybuffer";
