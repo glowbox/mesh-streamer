@@ -3,48 +3,49 @@ var app       = express();
 var server    = require("http").createServer(app);
 var bodyParser = require('body-parser');
 
+var os = require('os');
+var ifaces = os.networkInterfaces();
+
+var serverIpAddresses = [];
+
+Object.keys(ifaces).forEach(function (ifname) {
+  var alias = 0;
+
+  ifaces[ifname].forEach(function (iface) {
+    if ('IPv4' !== iface.family || iface.internal !== false) {
+      // skip over internal (i.e. 127.0.0.1) and non-ipv4 addresses
+      return;
+    }
+
+    if (alias >= 1) {
+      // this single interface has multiple ipv4 addresses
+      // console.log(ifname + ':' + alias, iface.address);
+    } else {
+      serverIpAddresses.push(iface.address);
+      // this interface has only one ipv4 adress
+      //console.log("SERVER IP ADDRESS: " + iface.address);
+    }
+    ++alias;
+  });
+});
+
+
 var zlib = require('zlib');
 var fs = require('fs');
 
 // slots will be released if a client doesn't send an update within this interval.
 var SOURCE_TIMEOUT_THRESHOLD = 2500; //milliseconds, 
 
-var slots = [
-  {
-    free: true,
-    info: {},
-    origin: [1, 0, 0],
-    angle: 0.785398, // 45 degrees
-    key: 0,
+var slots = [];
 
-    lastContact: 0
-  },
-  {
-    free: true,
-    info: {},
-    origin: [0,1,0],
-    angle: 0,
-    key: 0,
-
-    lastContact: 0
-  },
-  {
-    free: true,
-    info: {},
-    origin: [2,0,0],
-    angle: 3.49066,
-    key: 0,
-    
-    lastContact: 0,
-    stats: {},
-    lastFrame: {}
-  }
-];
+addSlot( 1.5, 0, 2, 0);
+addSlot(   0, 0, 2, 0);
+addSlot(-1.5, 0, 2, 0);
 
 
 function addSlot(originX, originY, originZ, angle) {
   slots.push({
-    ree: true,
+    free: true,
     info: {},
     origin: [originX, originY, originZ],
     angle: angle,
@@ -57,6 +58,7 @@ function addSlot(originX, originY, originZ, angle) {
 }
 
 var bytesRecieved = 0;
+var currentMBps = 0;
 
 var port            = 8080;
 var saveFirstFrame  = false;
@@ -68,8 +70,13 @@ function slotsChanged() {
 }
 
 function sendAdminStats() {
+  var slotStats = {
+    slots : [],
+    mbps : currentMBps,
+    ipAddresses: serverIpAddresses
+  };
 
- // io.to("admin").emit("stats", slotStats);
+  io.to("admin").emit("stats", slotStats);
 }
 
 function purgeInactiveSlots() {
@@ -340,7 +347,8 @@ var meshClients = [];
 
 // Print the data tranfer rate every second..
 setInterval(function() {
-  console.log((bytesRecieved / 1048576).toFixed(2) + " megabytes per second");
+  currentMBps = (bytesRecieved / 1048576)
+  console.log(currentMBps.toFixed(2) + " megabytes per second");
   bytesRecieved = 0;
   sendAdminStats();
 }, 1000);
@@ -597,6 +605,9 @@ function debugMeshBuffer(obj, author, verbose) {
 server.listen(port);
 
 
-console.log("\n-----------------------------");
-console.log("Server listening on port " + port);
-console.log("-----------------------------\n");
+
+console.log("\n--------------------------------------");
+console.log("\nMesh Streaming Server Started\n");
+console.log("Server IP Address: " + serverIpAddresses.join(", "));
+console.log("Server Port:       " + port);
+console.log("----------------------------------------\n");

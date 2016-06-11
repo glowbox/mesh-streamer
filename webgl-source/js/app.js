@@ -61,7 +61,7 @@ function makeGradientPlaneBuffer() {
 }
 
 function makeGradientPlane() {
-	meshGeom = new THREE.PlaneGeometry( 4, 4, gridResolution, gridResolution );
+	meshGeom = new THREE.PlaneGeometry( 1, 1, gridResolution, gridResolution );
 
 	console.log("Colors:   " + meshGeom.colorsNeedUpdate);
 	console.log("Elements: " + meshGeom.elementsNeedUpdate);

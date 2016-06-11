@@ -66,11 +66,9 @@ function buildTable(slotCount) {
 function renderSlots(slots) {
 
 	if(!slotThumbnailsInitialized) {
-		
 		buildTable(slots.length);
-
-		
 	}
+
 	slotThumbnailsInitialized = true;
 
 	connectedSlots = [];
@@ -98,7 +96,7 @@ function renderSlots(slots) {
 			slotRows[i].title.innerHTML = slots[i].info.title;
 			slotRows[i].platform.innerHTML = slots[i].info.platform;
 			slotRows[i].key.innerHTML = slots[i].key;
-			slotRows[i].actions.innerHTML = "<a href=\"#\" class=\"button eject\">Eject</a>"
+			slotRows[i].actions.innerHTML = "<a href=\"#\" class=\"button eject\">Eject</a> | <a href=\"#\" class=\"button view\">View</a>"
 		}		
 	}
 	
@@ -112,8 +110,11 @@ document.getElementById("disconnected").classList.add("hidden");
 	socket.emit("register-admin");
 
 	socket.on("slots", function(slots) {
-		//console.log("slots changed", slots);
 		renderSlots(slots);
+	});
+
+	socket.on("stats", function(stats) {
+		console.log(stats.mbps);
 	});
 
 	socket.on("disconnect", function() {
@@ -135,6 +136,10 @@ tbody.addEventListener("click", function(e){
 		
 		if(e.target.classList.contains("eject")) {
 			socket.emit("eject", {"slot" : slotId});
+		}
+
+		if(e.target.classList.contains("view")) {
+			window.open("/admin/slot.html?slot=" + slotId);
 		}
 
 		e.stopPropagation();

@@ -7,6 +7,12 @@ body{
 	color:#b6d0f5;
 }
 
+H2 {
+	font-family:sans-serif;
+	font-size:18px;
+	text-indent:20px;
+}
+
 A,
 A:hover,
 A:active,
@@ -34,7 +40,6 @@ A:hover{
 	padding-bottom:5px;
 	
 	border-right:1px solid #40526b;
-
 }
 
 
