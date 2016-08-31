@@ -39,8 +39,8 @@ var SOURCE_TIMEOUT_THRESHOLD = 2500; //milliseconds,
 var slots = [];
 
 addSlot( 1.5, 0, 2, 0);
-addSlot(   0, 0, 2, 0);
-addSlot(-1.5, 0, 2, 0);
+//addSlot(   0, 0, 2, 0);
+//addSlot(-1.5, 0, 2, 0);
 
 
 function addSlot(originX, originY, originZ, angle) {
