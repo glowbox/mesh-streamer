@@ -1,11 +1,16 @@
-var meshGeom;
+//json
+var data;
 
+//for color animation
 var gridResolution = Math.floor(Math.random() * 15 + 3);
 var blueComponent = Math.random();
 var animationFrequency = Math.random() * 0.01;
 var waveFrequency = Math.random() * 10 + 6;
 
-var useBufferGeometry = false;
+//scene setup
+var meshGeom;
+var meshes = [];
+var vertexColors = [];
 
 var core = {
 	"camera" : null,
@@ -41,101 +46,39 @@ function initializeScene() {
 	core.scene.add(ambient);
 
 	addPointLight(12, 19, 15, 0xfffbe7);
-	
-	if(useBufferGeometry){
-		makeBufferPlane();
-	} else {
-		makePlane();
-	}	
 }
 
+function updateGeometry() {
 
+	if( meshGeom == null || meshGeom.geometry == null ) return;
 
-function makeBufferPlane() {
-	meshGeom = new THREE.PlaneBufferGeometry( 1, 1, gridResolution, gridResolution );
-
-	var obj = new THREE.Mesh( meshGeom, new THREE.MeshLambertMaterial({vertexColors: THREE.FaceColors, "wireframe" : false}) );
-	meshGeom.addAttribute("color", new THREE.BufferAttribute( new Float32Array(meshGeom.getAttribute("position").array.length), 3));
-
-	core.scene.add(obj);
 }
 
-function updateBufferGeom() {
+function resizeViewport(width, height) {
+	core.camera.aspect = width / height;
+	core.camera.updateProjectionMatrix();
+	core.renderer.setSize( width, height );
+}
 
-	var now = new Date().getTime() * animationFrequency;
+function render() {
 
-	var verts  = meshGeom.getAttribute("position");
-	var colors = meshGeom.getAttribute("color");
+	if( meshGeom != null && meshGeom.geometry != null ){
 
-	var vertCount = verts.array.length;
-	for(var i = 2; i < vertCount; i += 3) {
-		verts.array[i] = Math.cos( (verts.array[i - 1]* waveFrequency) + now ) * Math.sin( (verts.array[i-2] * waveFrequency) + now) * 0.1;
+		var status = streamer.getDebugStatus();
+		var statusText = [];
+		for(var itm in status) {
+			statusText.push(itm + ": " + status[itm]);
+		}
+		document.getElementById("status").innerHTML = statusText.join("<br>");
 
-		colors.array[i] = Math.cos( verts.array[i - 2] * 8 + now * 3) * 0.5 + 0.5;
-		colors.array[i+1] = Math.cos( verts.array[i - 1] * 7 + now * 1.231) * 0.5 + 0.5;
+		updateGeometry();	
+		
+		streamer.update(meshGeom.geometry);
+
+		core.renderer.render(core.scene, core.camera);
 	}
 
-	verts.needsUpdate  = true;
-	colors.needsUpdate = true;
-}
-
-
-function makePlane() {
-	//meshGeom = new THREE.PlaneGeometry( 1, 1, gridResolution, gridResolution );
-
-	
-	
-	var marginbottom = 4, chartwidth = 90, chartheight = 30; //3D units
-    var xscale = d3.scale.linear().range([-chartwidth/2, chartwidth/2]),
-        yscale = d3.scale.linear().range([0, chartheight]);
-
-	var meshes = [];
-	var columnmaterial = new THREE.MeshPhongMaterial({
-	      color: "#0000ff",
-	      emissive: "#000000"
-	    });
-	
-	d3.csv('data/data.csv', population, function(data){
-    	xscale.domain([0, data.length - 1]);
-    	yscale.domain([0, d3.max(data, function(d){ return d.all; })]);
-
-	    var columnwidth = (chartwidth / data.length);
-	    columnwidth -= columnwidth * 0.1;
-
-	    var columnmaterial = new THREE.MeshPhongMaterial({
-	      color: "#0000ff",
-	      emissive: "#000000"
-	    });
-
-	    data.forEach(function(d, i, a){
-	      var colheight = yscale(d.all);
-	      var columngeo = new THREE.BoxGeometry(columnwidth, colheight, columnwidth);
-	      var columnmesh = new THREE.Mesh(columngeo, columnmaterial);
-	      columnmesh.position.set(xscale(i), colheight/2 + marginbottom, 0); //Box geometry is positioned at its’ center, so we need to move it up by half the height
-
-		  meshes.push( columnmesh);
-	    });
-
-	    //merge both geometries
-		geometry = mergeMeshes(meshes);
-		meshGeom = new THREE.Mesh(geometry, columnmaterial);
-		
-		console.log("Colors:   " + meshGeom.geometry.colorsNeedUpdate);
-		console.log("Elements: " + meshGeom.geometry.elementsNeedUpdate);
-		console.log("Verts:    " + meshGeom.geometry.verticesNeedUpdate);
-
-		var obj = new THREE.Mesh( meshGeom.geometry, new THREE.MeshLambertMaterial({vertexColors: THREE.FaceColors, "wireframe" : false}) );//	
-		core.scene.add(obj);
-  });
-
-	
-}
-
-function population(d) {
-	d.all = +d.all;
-	d.male = +d.male;
-	d.female = +d.female;
-	return d;
+	window.requestAnimationFrame(render);
 }
 
 function mergeMeshes (meshes) {
@@ -149,69 +92,86 @@ function mergeMeshes (meshes) {
   return combined;
 }
 
-function updateGeometry() {
-
-	if( meshGeom == null || meshGeom.geometry == null ) return;
+function makeBar( xVal, yVal, z, zMax ){
 	
-	var now = new Date().getTime() * animationFrequency;
-	var faceVerts = ['a', 'b', 'c'];
+	console.log("makeBar ", xVal, yVal);
+	
+	var chartspacing = 0.1, chartwidth = 1, chartheight = 1, chartdepth = 1; //3D units
 
-/*
-	for(var i = 0; i < meshGeom.vertices.length; i++) {
-		meshGeom.vertices[i].z = Math.cos( (meshGeom.vertices[i].y * waveFrequency) + now) * 0.125;
-	}
-*/
+	var columnmaterial = new THREE.MeshPhongMaterial({
+		color: "#0000ff",
+		emissive: "#000000"
+    });
 
-	for(var f = 0; f < meshGeom.geometry.faces.length; f++){
-		var vx = meshGeom.geometry.vertices[ meshGeom.geometry.faces[f].a ].x;
-		var vy = meshGeom.geometry.vertices[ meshGeom.geometry.faces[f].a ].y;
 
-		var r = Math.cos( vx * 8 + now * 1.75) * 0.5 + 0.5;
-		var g = Math.cos( vy * 6 + now * 1.231) * 0.5 + 0.5;
+	var columnwidth = (chartwidth / xVal.length);
+	var minV = 0;//arrayMin( yVal );
+	var maxV = arrayMax( yVal );
 
-		r = ~~(r * 255) / 255;
-		g = ~~(g * 255) / 255;
-		
-		meshGeom.geometry.faces[f].color.setRGB(r, g , blueComponent );
-	}
+    for( var i=0; i < xVal.length; i++){
+    	
+    	var colheight = map_range( yVal[i], minV, maxV, 0, chartheight);
 
-	meshGeom.geometry.colorsNeedUpdate = true;
-	meshGeom.geometry.verticesNeedUpdate  = true;
+		var columndepth =  map_range(z, 0, zMax, 0, chartdepth);
 
+		var columngeo = new THREE.BoxGeometry(columnwidth, colheight, columnwidth);
+
+		for (var c = 0; c < columngeo.faces.length; c++) {
+	        var face = columngeo.faces[c];
+	        face.color.set( DISTINCT_COLORS[i]);
+	    }
+
+		var columnmesh = new THREE.Mesh(columngeo, columnmaterial);
+		columnmesh.position.set( i*columnwidth + i*chartspacing , colheight/2, columndepth ); //Box geometry is positioned at its’ center, so we need to move it up by half the height
+
+		meshes.push( columnmesh);
+    }
+	
 }
 
 
-function resizeViewport(width, height) {
-	core.camera.aspect = width / height;
-	core.camera.updateProjectionMatrix();
-	core.renderer.setSize( width, height );
-}
+function dataLoaded( jsonObj ) {
 
+	//education
+	var education = jsonObj["Education"];
 
-function render() {
-
-	if( meshGeom != null && meshGeom.geometry != null ){
-
-		var status = streamer.getDebugStatus();
-		var statusText = [];
-		for(var itm in status) {
-			statusText.push(itm + ": " + status[itm]);
+	var v = education["Values"];
+	for( var i=0; i < v.length; i++ ){
+		var x = [];
+		var y = [];
+		var arr = v[i];
+		for( xVal in arr ){
+			if( xVal != "total"){
+				x.push( xVal );
+				y.push( arr[xVal] );
+			}
 		}
-		document.getElementById("status").innerHTML = statusText.join("<br>");
-
-		if(useBufferGeometry) {
-			updateBufferGeom();
-		} else {
-			updateGeometry();	
-		}
-
-
-		streamer.update(meshGeom.geometry);
-
-		core.renderer.render(core.scene, core.camera);
+		makeBar( x, y, i, v.length);
 	}
 
-	window.requestAnimationFrame(render);
+	console.log("Meshes " + meshes.length);
+    //merge all geometries
+	geometry = mergeMeshes(meshes);
+
+	meshGeom = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial({vertexColors: THREE.VertexColors, "wireframe" : false}) );//	
+	core.scene.add(meshGeom);
+}
+
+function loadData( url){
+	var xmlhttp = new XMLHttpRequest();
+	
+	xmlhttp.onreadystatechange = function() {
+	    if (this.readyState == 4 && this.status == 200) {
+	    	console.log("Data Loaded");
+	        var obj = JSON.parse(this.responseText);
+	        dataLoaded( obj );
+	    }else if(this.readyState > 3){
+	    	console.log("Error loading data " + this.readyState + " " + this.status);
+	    }
+	};
+
+	xmlhttp.open("GET", url, true);
+	xmlhttp.send();
 }
 
 function initialize() {
@@ -228,6 +188,7 @@ function initialize() {
 	});
 
 	render();
+	loadData( "data/nw.json");
 }
 
 window.addEventListener('load', initialize);
