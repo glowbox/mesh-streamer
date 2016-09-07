@@ -1,16 +1,10 @@
 //json
 var data;
 
-//for color animation
-var gridResolution = Math.floor(Math.random() * 15 + 3);
-var blueComponent = Math.random();
-var animationFrequency = Math.random() * 0.01;
-var waveFrequency = Math.random() * 10 + 6;
-
 //scene setup
 var meshGeom;
 var meshes = [];
-var vertexColors = [];
+var labelFont;
 
 var core = {
 	"camera" : null,
@@ -98,11 +92,6 @@ function makeBar( xVal, yVal, z, zMax ){
 	
 	var chartspacing = 0.1, chartwidth = 1, chartheight = 1, chartdepth = 1; //3D units
 
-	var columnmaterial = new THREE.MeshPhongMaterial({
-		color: "#0000ff",
-		emissive: "#000000"
-    });
-
 
 	var columnwidth = (chartwidth / xVal.length);
 	var minV = 0;//arrayMin( yVal );
@@ -111,9 +100,7 @@ function makeBar( xVal, yVal, z, zMax ){
     for( var i=0; i < xVal.length; i++){
     	
     	var colheight = map_range( yVal[i], minV, maxV, 0, chartheight);
-
 		var columndepth =  map_range(z, 0, zMax, 0, chartdepth);
-
 		var columngeo = new THREE.BoxGeometry(columnwidth, colheight, columnwidth);
 
 		for (var c = 0; c < columngeo.faces.length; c++) {
@@ -121,12 +108,17 @@ function makeBar( xVal, yVal, z, zMax ){
 	        face.color.set( DISTINCT_COLORS[i]);
 	    }
 
-		var columnmesh = new THREE.Mesh(columngeo, columnmaterial);
+		var columnmesh = new THREE.Mesh(columngeo);
 		columnmesh.position.set( i*columnwidth + i*chartspacing , colheight/2, columndepth ); //Box geometry is positioned at its’ center, so we need to move it up by half the height
 
 		meshes.push( columnmesh);
     }
 	
+}
+function makeLegend( xVal ){
+
+	// we need to construct a "label" array and a "color" array, we will pass these through node.js instead of making a mesh.
+
 }
 
 
@@ -176,7 +168,7 @@ function loadData( url){
 
 function initialize() {
 
-	
+
 	initializeCore();
 	initializeScene();
 	

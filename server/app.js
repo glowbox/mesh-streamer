@@ -39,9 +39,8 @@ var SOURCE_TIMEOUT_THRESHOLD = 2500; //milliseconds,
 var slots = [];
 
 addSlot( 1.5, 0, 2, 0);
-//addSlot(   0, 0, 2, 0);
-//addSlot(-1.5, 0, 2, 0);
-
+addSlot(   0, 0, 2, 0);
+addSlot(-1.5, 0, 2, 0);
 
 function addSlot(originX, originY, originZ, angle) {
   slots.push({
@@ -418,12 +417,13 @@ io.sockets.on('connection', function (socket) {
 
     var slotIndex = -1;
 
-    if(info.slot && slots[info.slot].free) {
+    if(info.slot != null && slots[info.slot].free) {
       slotIndex = info.slot;
       console.log("Source registering for specific slot: " + slotIndex );
     } else {
       slotIndex = getRandomFreeSlot();
-      console.log("Source registering with random slot: " + slotIndex );
+      if(info.slot !=null)  console.log("Source got random slot: " + slotIndex +", requested slot is in use: " + info.slot );
+      else console.log("Source registering with random slot: " + slotIndex );
     }
 
     if(slotIndex !== -1) {

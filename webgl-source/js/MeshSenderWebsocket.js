@@ -22,6 +22,7 @@ var MeshSenderWebsocket = function(author, title, desiredSlot) {
 		"platform" 	: "THREEJS"
 	};
 
+
 	if(desiredSlot !== null) {
 		this.info.slot = desiredSlot;
 	}
@@ -34,6 +35,7 @@ var MeshSenderWebsocket = function(author, title, desiredSlot) {
 	this.socket.on("connect", function() {
 		
 		self.connected = true;
+		console.log("register ", self.info);
 		self.socket.emit("register", self.info);
 	});
 
